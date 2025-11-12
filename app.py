@@ -902,7 +902,35 @@ def plot_stat_matplotlib(team: str, stat_col: str, n: Optional[int] = None, fram
 
 @st.cache_resource(show_spinner=False)
 def get_openai_client():
-    api_key = os.getenv("OPENAI_API_KEY")
+    api_key: Optional[str] = None
+
+    secrets_source = getattr(st, "secrets", None)
+    if secrets_source:
+        try:
+            secrets_dict = dict(secrets_source)
+        except Exception:
+            secrets_dict = {}
+        for key_option in ("OPENAI_API_KEY", "openai_api_key"):
+            candidate = secrets_dict.get(key_option)
+            if isinstance(candidate, str) and candidate.strip():
+                api_key = candidate.strip()
+                break
+        if not api_key:
+            nested = secrets_dict.get("openai")
+            if isinstance(nested, dict):
+                for key_option in ("api_key", "API_KEY"):
+                    candidate = nested.get(key_option)
+                    if isinstance(candidate, str) and candidate.strip():
+                        api_key = candidate.strip()
+                        break
+                if not api_key:
+                    candidate = nested.get("key")
+                    if isinstance(candidate, str) and candidate.strip():
+                        api_key = candidate.strip()
+
+    if not api_key:
+        api_key = os.getenv("OPENAI_API_KEY")
+
     if not api_key:
         return None
     try:
